@@ -1,0 +1,35 @@
+savedir: 'runninglogs/save/exp0'
+checkpointdir: '/p300/PycharmProjects/ChestXrayCls/checkpoints/exp0'
+seed: 0
+rundir: 'runninglogs/runs/c-exp-0'
+
+network:
+  name: 'densenet121'
+
+dataset:
+  name: 'ChestXray-14'
+  image_resize: 256
+  num_classes: 14
+
+train:
+  num_workers: 8
+  batch_size: 256
+  start_epoch: 1
+  epochs: 100
+  lr: 0.00001
+  weight_decay: 0.0001
+  lr_decay_epochs:
+  - 10
+  - 20
+  - 35
+  lr_decay_gamma: 0.1
+  
+val:
+  num_workers: 8
+  batch_size: 256
+
+test:
+  num_workers: 8
+  batch_size: 128
+  threshold: 0.0
+  

@@ -1,0 +1,41 @@
+ExperimentsSetup: 'adam'
+
+savedir: 'runninglogs/save/exp2'
+savevisdir: '/root/PycharmProjects/SLAM-Extrinsic-Estimation/VisImage/exp2'
+checkpointdir: '/p300/PycharmProjects/SLAM-Extrinsic-Estimation/checkpoints/exp2'
+seed: 0
+rundir: 'runninglogs/runs/c-exp-2'
+
+network:
+  name: 'ResNet34'
+  layers: '34'
+
+dataset:
+  name: 'VanishPointsDataset'
+  image_resize: 256
+  num_classes: 14
+
+train:
+  num_workers: 8
+  batch_size: 16
+  start_epoch: 1
+  epochs: 300
+  lr: 0.001
+  weight_decay: 0.0001
+  lr_decay_epochs:
+  - 20
+  - 50
+  - 100
+  - 200
+  - 250
+  lr_decay_gamma: 0.1
+  
+val:
+  num_workers: 8
+  batch_size: 16
+
+test:
+  num_workers: 8
+  batch_size: 16
+  threshold: 0.0
+  
