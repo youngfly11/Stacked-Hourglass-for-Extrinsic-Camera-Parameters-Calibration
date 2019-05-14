@@ -12,8 +12,12 @@ import numpy as np
 from tqdm import tqdm
 from torch import nn
 from lib.model import densenet, resnet
-from lib.dataset.dataset import get_image_dataloader
+from lib.dataset.dataset_hg import get_image_dataloader
 from lib.metric.losses import MeanSquareLoss
+from lib.model.hourglass import hg
+from lib.model.hourglass_gn import hg_gn
+from lib.metric.jointMseLoss import JointsMSELoss
+from lib.metric.pose_evaluation import final_preds
 from lib.utils import get_inverse_images
 from plus.meter import AverageValueMeter
 from tensorboardX import SummaryWriter
@@ -51,8 +55,9 @@ class Regressor(object):
 
     def build_network(self):
 
-        if self.cfg.network.name == 'ResNet18':
-            self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
+        if self.cfg.network.name == 'Hourglass_Gn':
+            self.model = hg_gn({'num_stacks':2, 'num_blocks':1, 'num_classes':1})
+            # self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
         elif self.cfg.network.name == 'ResNet34':
             self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
         elif self.cfg.network.name == 'ResNet50':
@@ -64,15 +69,9 @@ class Regressor(object):
 
     def build_optimizer(self):
 
-        self.optimizer = torch.optim.Adam([
-            {'params': self.model.layer0.parameters(), 'lr': self.cfg.train.lr},
-            {'params': self.model.layer1.parameters(), 'lr': self.cfg.train.lr},
-            {'params': self.model.layer2.parameters(), 'lr': self.cfg.train.lr},
-            {'params': self.model.layer3.parameters(), 'lr': self.cfg.train.lr},
-            {'params': self.model.layer4.parameters(), 'lr': self.cfg.train.lr},
-            {'params': self.model.regressor.parameters(), 'lr': self.cfg.train.lr}
-        ], lr=self.cfg.train.lr, weight_decay=self.cfg.train.weight_decay)
-        self.criterion = MeanSquareLoss().to(self.device)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+        lr=self.cfg.train.lr, weight_decay=self.cfg.train.weight_decay)
+        self.criterion = JointsMSELoss(use_target_weight=False).to(self.device)
         self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.cfg.train.lr_decay_epochs, gamma=self.cfg.train.lr_decay_gamma)
 
     def build_meters(self):
@@ -100,9 +99,11 @@ class Regressor(object):
             image, label = data_sample['image'], data_sample['label']
             image, label = image.to(self.device), label.to(self.device).float()
             pred = self.model(image)
-            pred = torch.sigmoid(pred)
-            loss = self.criterion(pred, label)
-            loss = torch.sqrt(loss)
+
+            loss = 0
+            loss_ratio = [0.5, 1]
+            for idx, stack_pred in enumerate(pred):
+                loss += loss_ratio[idx]*self.criterion(output=stack_pred, target=label)
 
             if is_training:
                 self.optimizer.zero_grad()
@@ -113,7 +114,7 @@ class Regressor(object):
                 self.running_loss_meter_train.add(loss.data.item())
                 loss_mean = self.loss_meter_train.value()[0]
                 print(
-                    'Epoch:{}, step:{}/{}, CurLoss:{:.4f}, RunningLoss:{:.4f}'.format(epoch, step, len(dataloader),
+                    'Train Epoch:{}, step:{}/{}, CurLoss:{:.8f}, RunningLoss:{:.8f}'.format(epoch, step, len(dataloader),
                                                                                       loss.data.item(),
                                                                                       self.running_loss_meter_train.value()[
                                                                                           0]))
@@ -126,13 +127,13 @@ class Regressor(object):
                                          self.running_loss_meter_val.n)
                 self.loss_meter_val.add(loss.data.item())
                 print(
-                    'Epoch:{}, step:{}/{}, CurLoss:{:.4f}, RunningLoss:{:.4f}'.format(epoch, step, len(dataloader),
+                    'Val Epoch:{}, step:{}/{}, CurLoss:{:.8f}, RunningLoss:{:.8f}'.format(epoch, step, len(dataloader),
                                                                                       loss.data.item(),
                                                                                       self.running_loss_meter_val.value()[
                                                                                           0]))
                 loss_mean = self.loss_meter_val.value()[0]
 
-        print('Loss:{:.6f}'.format(loss_mean))
+        print('Loss:{:.8f}'.format(loss_mean))
 
         return loss_mean
 
@@ -150,7 +151,7 @@ class Regressor(object):
 
             self.tbwriter.add_scalar('loss_epoch_mean/loss_train_mean', loss_epoch_train, epoch)
             self.tbwriter.add_scalar('running_loss/learning_rate', self.optimizer.param_groups[0]['lr'], epoch)
-            self.logger.info('Epoch: {}/{}, train_loss:{:.4f}, val_loss:{:.4f}, best_val_loss:{:.4f}, best_val_epoch:{:.4f}'.format(
+            print('Epoch: {}/{}, train_loss:{:.8f}, val_loss:{:.8f}, best_val_loss:{:.8f}, best_val_epoch:{:.8f}'.format(
                     epoch, self.cfg.train.epochs, loss_epoch_train, loss_epoch_val, self.best_val_loss, self.best_val_epoch))
 
             self.lr_scheduler.step()
@@ -187,7 +188,7 @@ class Regressor(object):
         ckpt_name = 'checkpoint_best_val_loss'
         ckpt = torch.load(os.path.join(self.cfg.checkpointdir, ckpt_name + '.pth'))
         loss_train, loss_val, epoch = ckpt['train_loss'], ckpt['val_loss'], ckpt['epoch']
-        log_str_1 = '\tTest: Name={}, train_loss={:.4f}, val_loss={:.4f}, Epoch={}\n'.format(ckpt_name, loss_train, loss_val, epoch)
+        log_str_1 = '\tTest: Name={}, train_loss={:.8f}, val_loss={:.8f}, Epoch={}\n'.format(ckpt_name, loss_train, loss_val, epoch)
         print(log_str_1)
 
         if not osp.exists(self.cfg.savevisdir):
@@ -197,30 +198,24 @@ class Regressor(object):
         with torch.no_grad():
             self.model.eval()
             for step, data in enumerate(tqdm(self.test_loader)):
-                image, label = data['image'].to(self.device), data['label'].to(self.device).float()  # .cuda().float()
-                pred = self.model(image)
-                pred = torch.sigmoid(pred)
+                image, label, label_coord = data['image'].to(self.device), data['label'].to(self.device).float(), data['label_coord']  # .cuda().float()
+                pred = self.model(image)[-1]
                 loss = self.criterion(pred, label)
-
-                img_info = np.array([640, 480])[None, :]
+                pred_coord = final_preds(output=pred.detach().cpu(), scale=4, res=[160, 120])
                 image = get_inverse_images(image=image)
-                label = label.detach().cpu().numpy()
-                label *= img_info
-                label = label.astype(np.int32)
-                pred = pred.detach().cpu().numpy()
-                pred *= img_info
-                pred = pred.astype(np.int32)
+                label_coord = label_coord.numpy().astype(np.int32)
+                pred_coord = pred_coord.astype(np.int32)
                 for step_id in range(image.shape[0]):
                     image_per = image[step_id].copy()
-                    label_step1 = label[step_id]
-                    pred_step1 = pred[step_id]
+                    label_step1 = label_coord[step_id]
+                    pred_step1 = pred_coord[step_id]
                     image_per = cv2.circle(img=image_per, center=(label_step1[0], label_step1[1]), radius=5,color=(255,0,0), thickness=2)
                     image_per = cv2.circle(img=image_per, center=(pred_step1[0], pred_step1[1]), radius=5,color=(255,255,255), thickness=2)
                     imageio.imsave(osp.join(self.cfg.savevisdir, 'img_{}_{}.png'.format(step, step_id)), image_per)
 
                 self.test_loss_meter.add(loss.data.item())
-                print('Step:{}/{}, cur_loss:{:.4f}, running_loss:{:.4f}'.format(step, len(self.test_loader), loss.data.item(), self.test_loss_meter.value()[0]))
-            print('Test_loss:{:.4f}'.format(self.test_loss_meter.value()[0]))
+                print('Step:{}/{}, cur_loss:{:.8f}, running_loss:{:.8f}'.format(step, len(self.test_loader), loss.data.item(), self.test_loss_meter.value()[0]))
+            print('Test_loss:{:.8f}'.format(self.test_loss_meter.value()[0]))
 
     def test_only(self):
         self.test()

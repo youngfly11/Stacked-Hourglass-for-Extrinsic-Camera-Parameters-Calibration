@@ -9,7 +9,7 @@ import torch
 import json
 import imageio
 import os.path as osp
-
+import torch
 
 class VanishPointsDataSet(Dataset):
     def __init__(self, data_dir, label_set, transform=None):
@@ -37,8 +37,10 @@ class VanishPointsDataSet(Dataset):
         image_file = line_data[0].split('_')
         img = imageio.imread(osp.join(self.data_dir, '{}/{}.jpg'.format(image_file[0], image_file[1])))
         h, w, c = img.shape
-        vp_coord = np.array([float(line_data[3])/w, float(line_data[4])/h])
-        sample = {'image': img, "label": vp_coord}
+        gt_heat = np.zeros((int(h/4), int(w/4)))
+        pt = np.array([float(line_data[3])/4, float(line_data[4])/4]).astype(np.int32)
+        gt_heat = draw_labelmap(img=gt_heat, sigma=1, pt=pt, type='Gaussian')
+        sample = {'image': img, "label": gt_heat, 'label_coord': pt*4}
         if self.transform is not None:
             sample = self.transform(sample)
         return sample
@@ -50,12 +52,14 @@ class RandomHorizonFlip(object):
 
     def __call__(self, sample):
 
-        image, label= sample['image'], sample['label']
+        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
         rand_seed = np.random.random()
-        if rand_seed >0.5:
+        if rand_seed > 0.5:
             image = np.fliplr(image).copy()
-        label[0] = 1 - label[0]
-        return {'image': image, 'label': label}
+            label = np.fliplr(label).copy()
+
+        label_coord[0] = image.shape[1]-label_coord[0]
+        return {'image': image, 'label': label, 'label_coord': label_coord}
 
 
 class NormalizedImage(object):
@@ -63,23 +67,24 @@ class NormalizedImage(object):
     std_bgr = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
     def __call__(self, sample):
-        image, label = sample['image'], sample['label']
+        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
         image = image[:,:, [2,1,0]]
         image = image / 255.0
         image -= self.mean_bgr
         image /= self.std_bgr
-        return {'image': image, 'label': label}
+        return {'image': image, 'label': label, 'label_coord': label_coord}
 
 
 class Numpy2Tensor(object):
     """converting the numpy format to tensor """
 
     def __call__(self, sample):
-        image, label = sample['image'], sample['label']
+        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
         image = image.transpose(2, 0, 1)
         image = torch.FloatTensor(image)
         label = torch.FloatTensor(label)
-        return {'image': image, 'label': label}
+        label_coord = torch.FloatTensor(label_coord)
+        return {'image': image, 'label': label, 'label_coord': label_coord}
 
 
 def get_image_dataloader(batch_size_train=None, batch_size_val=None, batch_size_test=None):
@@ -116,7 +121,6 @@ def get_image_dataloader(batch_size_train=None, batch_size_val=None, batch_size_
 def draw_labelmap(img, pt, sigma, type='Gaussian'):
     # Draw a 2D gaussian
     # Adopted from https://github.com/anewell/pose-hg-train/blob/master/src/pypose/draw.py
-    img = to_numpy(img)
 
     # Check that any part of the gaussian is in-bounds
     ul = [int(pt[0] - 3 * sigma), int(pt[1] - 3 * sigma)]
@@ -124,7 +128,7 @@ def draw_labelmap(img, pt, sigma, type='Gaussian'):
     if (ul[0] >= img.shape[1] or ul[1] >= img.shape[0] or
             br[0] < 0 or br[1] < 0):
         # If not, just return the image as is
-        return to_torch(img), 0
+        return img
 
     # Generate gaussian
     size = 6 * sigma + 1
@@ -146,7 +150,7 @@ def draw_labelmap(img, pt, sigma, type='Gaussian'):
     img_y = max(0, ul[1]), min(br[1], img.shape[0])
 
     img[img_y[0]:img_y[1], img_x[0]:img_x[1]] = g[g_y[0]:g_y[1], g_x[0]:g_x[1]]
-    return to_torch(img), 1
+    return img
 
 
 if __name__ == '__main__':

@@ -17,7 +17,8 @@ from distutils.version import LooseVersion
 from sacred import Experiment
 from easydict import EasyDict as edict
 from lib.utils import random_init, create_logger, check_para_correctness
-from lib.classifier import Regressor
+# from lib.classifier import Regressor
+from lib.classifier_hg import Regressor
 
 ex = Experiment()
 
@@ -44,5 +45,5 @@ if __name__ == '__main__':
     # assert LooseVersion(torch.__version__) >= LooseVersion('1.0.0'), \
     #     'PyTorch>=1.0.0 is required'
 
-    ex.add_config('./experiments/c-exp-1.yaml')
+    ex.add_config('./experiments/c-exp-2.yaml')
     ex.run_commandline()
