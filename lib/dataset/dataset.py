@@ -84,7 +84,7 @@ class Numpy2Tensor(object):
 
 def get_image_dataloader(batch_size_train=None, batch_size_val=None, batch_size_test=None):
 
-    data_dir = '/root/PycharmProjects/SLAM-Extrinsic-Estimation/data/processed/VP_Img_resize'
+    data_dir = '/root/project/SLAM/SLAM-Extrinsic-Estimation/data/processed/VP_Img_resize'
 
     data_transforms = {
         'train': transforms.Compose([

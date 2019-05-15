@@ -1,13 +1,13 @@
 ExperimentsSetup: 'adam'
 
 savedir: 'runninglogs/save/exp4'
-savevisdir: '/root/PycharmProjects/SLAM-Extrinsic-Estimation/VisImage/exp4'
-checkpointdir: '/p300/PycharmProjects/SLAM-Extrinsic-Estimation/checkpoints/exp4'
+savevisdir: '/root/project/SLAM/SLAM-Extrinsic-Estimation/VisImage/exp2'
+checkpointdir: '/root/project/SLAM/SLAM-Extrinsic-Estimation/checkpoints/exp2'
 seed: 0
-rundir: 'runninglogs/runs/c-exp-4'
+rundir: 'runninglogs/runs/c-exp-2'
 
 network:
-  name: 'Hourglass_Gn'
+  name: 'Hourglass'
   layers: 'stack=2, block=1, output=1'
 
 dataset:

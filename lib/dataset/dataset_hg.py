@@ -10,6 +10,7 @@ import json
 import imageio
 import os.path as osp
 import torch
+from lib.dataset.low_level_cues import line_detection
 
 class VanishPointsDataSet(Dataset):
     def __init__(self, data_dir, label_set, transform=None):
@@ -37,10 +38,13 @@ class VanishPointsDataSet(Dataset):
         image_file = line_data[0].split('_')
         img = imageio.imread(osp.join(self.data_dir, '{}/{}.jpg'.format(image_file[0], image_file[1])))
         h, w, c = img.shape
+
+        edge_det, line_det = line_detection(img)
+
         gt_heat = np.zeros((int(h/4), int(w/4)))
         pt = np.array([float(line_data[3])/4, float(line_data[4])/4]).astype(np.int32)
         gt_heat = draw_labelmap(img=gt_heat, sigma=1, pt=pt, type='Gaussian')
-        sample = {'image': img, "label": gt_heat, 'label_coord': pt*4}
+        sample = {'image': img, "label": gt_heat, 'label_coord': pt*4, 'line_det': line_det, 'edge_det': edge_det}
         if self.transform is not None:
             sample = self.transform(sample)
         return sample
@@ -52,14 +56,17 @@ class RandomHorizonFlip(object):
 
     def __call__(self, sample):
 
-        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
+        image, label, label_coord, line_det, edge_det =\
+            sample['image'], sample['label'], sample['label_coord'], sample['line_det'], sample['edge_det']
         rand_seed = np.random.random()
         if rand_seed > 0.5:
             image = np.fliplr(image).copy()
             label = np.fliplr(label).copy()
+            line_det = np.fliplr(line_det).copy()
+            edge_det = np.fliplr(edge_det).copy()
 
         label_coord[0] = image.shape[1]-label_coord[0]
-        return {'image': image, 'label': label, 'label_coord': label_coord}
+        return {'image': image, 'label': label, 'label_coord': label_coord, 'line_det': line_det, 'edge_det': edge_det}
 
 
 class NormalizedImage(object):
@@ -67,29 +74,35 @@ class NormalizedImage(object):
     std_bgr = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
     def __call__(self, sample):
-        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
+        image, label, label_coord, line_det, edge_det = \
+            sample['image'], sample['label'], sample['label_coord'], sample['line_det'], sample['edge_det']
         image = image[:,:, [2,1,0]]
         image = image / 255.0
         image -= self.mean_bgr
         image /= self.std_bgr
-        return {'image': image, 'label': label, 'label_coord': label_coord}
+        line_det = line_det / 255.0
+        edge_det = edge_det / 255.0
+        return {'image': image, 'label': label, 'label_coord': label_coord, 'line_det': line_det, 'edge_det': edge_det}
 
 
 class Numpy2Tensor(object):
     """converting the numpy format to tensor """
 
     def __call__(self, sample):
-        image, label, label_coord= sample['image'], sample['label'], sample['label_coord']
+        image, label, label_coord, line_det, edge_det = \
+            sample['image'], sample['label'], sample['label_coord'], sample['line_det'], sample['edge_det']
         image = image.transpose(2, 0, 1)
         image = torch.FloatTensor(image)
         label = torch.FloatTensor(label)
+        line_det = torch.FloatTensor(line_det)
+        edge_det = torch.FloatTensor(edge_det)
         label_coord = torch.FloatTensor(label_coord)
-        return {'image': image, 'label': label, 'label_coord': label_coord}
+        return {'image': image, 'label': label, 'label_coord': label_coord, 'line_det': line_det, 'edge_det': edge_det}
 
 
 def get_image_dataloader(batch_size_train=None, batch_size_val=None, batch_size_test=None):
 
-    data_dir = '/root/PycharmProjects/SLAM-Extrinsic-Estimation/data/processed/VP_Img_resize'
+    data_dir = '/root/project/SLAM/SLAM-Extrinsic-Estimation/data/processed/VP_Img_resize'
 
     data_transforms = {
         'train': transforms.Compose([

@@ -55,8 +55,8 @@ class Regressor(object):
 
     def build_network(self):
 
-        if self.cfg.network.name == 'Hourglass_Gn':
-            self.model = hg_gn({'num_stacks':2, 'num_blocks':1, 'num_classes':1})
+        if self.cfg.network.name == 'Hourglass':
+            self.model = hg({'num_stacks':2, 'num_blocks':1, 'num_classes':1})
             # self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
         elif self.cfg.network.name == 'ResNet34':
             self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
@@ -97,6 +97,8 @@ class Regressor(object):
 
         for step, data_sample in enumerate(dataloader):
             image, label = data_sample['image'], data_sample['label']
+            line_det, edge_det = data_sample['line_det'], data_sample['edge_det']
+            image = torch.cat((image, line_det, edge_det), 1)
             image, label = image.to(self.device), label.to(self.device).float()
             pred = self.model(image)
 

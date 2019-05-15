@@ -80,8 +80,8 @@ def check_para_correctness(cfg):
         os.makedirs(cfg.savedir)
     assert os.path.exists(cfg.savedir), '{} does not exist'.format(cfg.savedir)
 
-    if not os.path.exists(cfg.checkpointdir):
-        os.makedirs(osp.join('/p300/PycharmProjects/ChestXrayCls', cfg.checkpointdir))
+    # if not os.path.exists(cfg.checkpointdir):
+    #     os.makedirs(osp.join('/p300/PycharmProjects/ChestXrayCls', cfg.checkpointdir))
 
 def get_inverse_images(image):
     mean_bgr = np.array([0.485, 0.456, 0.406], dtype=np.float32)

@@ -1,0 +1,23 @@
+
+ 2019-05-15 10:25:42,014 | INFO | root 	 {   'ExperimentsSetup': 'adam',
+    'checkpointdir': '/root/project/SLAM/SLAM-Extrinsic-Estimation/checkpoints/exp2',
+    'dataset': {   'image_resize': 256,
+                   'name': 'VanishPointsDataset',
+                   'num_classes': 14},
+    'network': {'layers': 'stack=2, block=1, output=1', 'name': 'Hourglass'},
+    'rundir': 'runninglogs/runs/c-exp-2',
+    'savedir': 'runninglogs/save/exp4',
+    'savevisdir': '/root/project/SLAM/SLAM-Extrinsic-Estimation/VisImage/exp2',
+    'seed': 0,
+    'test': {'batch_size': 16, 'num_workers': 8, 'threshold': 0.0},
+    'train': {   'batch_size': 16,
+                 'epochs': 300,
+                 'lr': 0.001,
+                 'lr_decay_epochs': [20, 50, 100, 200, 250],
+                 'lr_decay_gamma': 0.1,
+                 'num_workers': 8,
+                 'start_epoch': 1,
+                 'weight_decay': 0.0001},
+    'val': {'batch_size': 16, 'num_workers': 8}}
+
+ 2019-05-15 10:25:52,389 | INFO | root 	 Training Mode

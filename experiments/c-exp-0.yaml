@@ -1,5 +1,5 @@
 savedir: 'runninglogs/save/exp0'
-checkpointdir: '/p300/PycharmProjects/ChestXrayCls/checkpoints/exp0'
+checkpointdir: '~/project/SLAM/ChestXrayCls/checkpoints/exp0'
 seed: 0
 rundir: 'runninglogs/runs/c-exp-0'
 

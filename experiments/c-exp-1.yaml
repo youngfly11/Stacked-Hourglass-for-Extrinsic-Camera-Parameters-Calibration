@@ -1,8 +1,8 @@
 ExperimentsSetup: 'adam'
 
 savedir: 'runninglogs/save/exp3'
-savevisdir: '/root/PycharmProjects/SLAM-Extrinsic-Estimation/VisImage/exp3'
-checkpointdir: '/p300/PycharmProjects/SLAM-Extrinsic-Estimation/checkpoints/exp3'
+savevisdir: '/root/project/SLAM/SLAM-Extrinsic-Estimation/VisImage/exp3'
+checkpointdir: '/root/project/SLAM/SLAM-Extrinsic-Estimation/checkpoints/exp3'
 seed: 0
 rundir: 'runninglogs/runs/c-exp-3'
 
