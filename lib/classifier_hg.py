@@ -55,9 +55,8 @@ class Regressor(object):
 
     def build_network(self):
 
-        if self.cfg.network.name == 'Hourglass_Gn':
-            self.model = hg_gn({'num_stacks':2, 'num_blocks':1, 'num_classes':1})
-            # self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
+        if self.cfg.network.name == 'Hourglass':
+            self.model = hg({'num_stacks':2, 'num_blocks':1, 'num_classes':1})
         elif self.cfg.network.name == 'ResNet34':
             self.model = resnet.ResNetBackbone(pretrain=True, layers=self.cfg.network.layers)
         elif self.cfg.network.name == 'ResNet50':
@@ -155,15 +154,6 @@ class Regressor(object):
                     epoch, self.cfg.train.epochs, loss_epoch_train, loss_epoch_val, self.best_val_loss, self.best_val_epoch))
 
             self.lr_scheduler.step()
-            # if epoch == 10:
-            #     for idx, param_group in enumerate(self.optimizer.param_groups):
-            #         param_group['lr'] /= 10.0
-            #
-            # elif epoch > 10:
-            #     if loss_epoch_val > self.val_loss_prev:
-            #         for idx, param_group in enumerate(self.optimizer.param_groups):
-            #             param_group['lr'] /= 10.0
-            #         self.val_loss_prev = loss_epoch_val
 
             self._save_model(epoch, self.loss_meter_train.value()[0],
                              self.loss_meter_val.value()[0])
@@ -205,6 +195,7 @@ class Regressor(object):
                 image = get_inverse_images(image=image)
                 label_coord = label_coord.numpy().astype(np.int32)
                 pred_coord = pred_coord.astype(np.int32)
+
                 for step_id in range(image.shape[0]):
                     image_per = image[step_id].copy()
                     label_step1 = label_coord[step_id]

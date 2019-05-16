@@ -1,25 +1,27 @@
-# HumanProtein
-Course Project For DIP
+# Stacked Hourglass for extrinsic camera parameter calibration
+
 ### Prepare the environment
-* Install Plus 
-    ``pip install git+https://github.com/SHTUPLUS/plus.git``
-* Install Goodluck
-    ``pip install git+https://github.com/Rhyssiyan/goodluck.git``
-* Data
+    pip install torch
+    pip install torchvision
+    pip install tensorboardX
+    pip install tensorflow-cpu
+    pip install tqdm, imageio, 
+
+### Prepare the dataset
+The dataset can be found [here](http://users.utcluj.ro/~razvanitu/VPdataset.zip). The author just provide the download link, 
+So I download the image for your convenience, the iamge data can be found in [BaiduYunDisk](https://pan.baidu.com/s/1EQZNFCJhjfnG87aKn9gY7w)
 ```
-   git clone https://github.com/SHTUPLUS/HumanProtein.git
-   cd HumanProtein/codebase
-   mkdir -p ./data/processed
-   ln -s /group/readonly/classification/HumanProtein/processed/train ./data/processed/train
-   ln -s /group/readonly/classification/HumanProtein/processed/test ./data/processed/test
-   ln -s /group/readonly/classification/HumanProtein/processed/train_labels.npy ./data/train_labels.npy
-   mkdir -p .protein/models
-   ln -s /group/readonly/models/proteins/resnet34-333f7ec4.pth .protein/models/
+mkdir checkpoints
+mkdir VisImage
+mkdir -p runninglogs/runs
+mkdir -p runinglogs/save
+ln -s /yourdata  ./data/processed/VP_Img_resize
+    
 ```
+
+
 ### Run the program
 * Training
-    - ``CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py train``   
-    - goodluck run "python main.py train" --ngpu 4 --env l2al
-    - Tip:
-        + 将数据放在shared memory中，在default.yaml中修改img_path
-        ``cp -r ~/projects/HumanProtein/codebase/data/processed/train /dev/shm/``
+    - sh train.sh   
+* Test
+    - sh test.sh
