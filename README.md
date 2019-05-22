@@ -9,7 +9,7 @@
 
 ### Prepare the dataset
 The dataset can be found [here](http://users.utcluj.ro/~razvanitu/VPdataset.zip). The author just provide the download link, 
-So I download the image for your convenience, the iamge data can be found in [BaiduYunDisk](https://pan.baidu.com/s/1EQZNFCJhjfnG87aKn9gY7w)
+So I download the image for your convenience, the image data can be found in [BaiduYunDisk](https://pan.baidu.com/s/1EQZNFCJhjfnG87aKn9gY7w)
 ```
 mkdir checkpoints
 mkdir VisImage
